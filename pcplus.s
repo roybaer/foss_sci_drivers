@@ -35,7 +35,7 @@ driver_name     db      6, "pcplus"
 description     db      33, "Plantronics ColorPlus - 16 Colors"
 
 ; call-table for the dispatcher
-call_tab        dw      get_driver_id           ; bp = 0
+call_tab        dw      get_color_depth         ; bp = 0
                 dw      init_video_mode         ; bp = 2
                 dw      restore_mode            ; bp = 4
                 dw      update_rect             ; bp = 6
@@ -102,14 +102,14 @@ dispatch:
 
         retf
 
-;-------------- get_driver_id ------------------------------------------
-; Returns a magic number that is usually identical to the number of
-; colors.
+;-------------- get_color_depth ----------------------------------------
+; Returns the number of colors supported by the driver, e.g. 4 or 16.
 ;
 ; Parameters:   --
-; Returns:      ax      magic number
+; Returns:      ax      number of colors
+; Notes:        The PC1512 driver returns the word -1, instead.
 ;-----------------------------------------------------------------------
-get_driver_id:
+get_color_depth:
         mov     ax,16
         ret
 

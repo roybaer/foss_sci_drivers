@@ -43,7 +43,7 @@ call_tab        dw      get_driver_id           ; bp = 0
                 dw      hide_cursor             ; bp = 10
                 dw      move_cursor             ; bp = 12
                 dw      load_cursor             ; bp = 14
-                dw      hw_scroll_dummy         ; bp = 16
+                dw      shake_screen            ; bp = 16
 
 ;-------------- cursor_struct ------------------------------------------
 ; Structure that stores the current mouse cursor.
@@ -462,13 +462,24 @@ load_cursor:
 
         ret
 
-;-------------- hw_scroll_dummy ----------------------------------------
-; Dummy for HW scolling functionality provided by some drivers.
+;-------------- shake_screen -------------------------------------------
+; Quickly shake the screen horizontally and/or vertically by a few
+; pixels to visualize collisions etc.
 ;
-; Parameters:   --
+; Parameters:   ax      segment of timer tick word for busy waiting
+;               bx      offset of timer tick word for busy waiting
+;               cx      number of times (forth & back count separately)
+;               dl      direction mask (bit 1: down; bit 2: right)
 ; Returns:      --
+; Notes:        The implementation should use hardware scrolling and
+;               eventually restore the original screen position.
+;               The timer tick word is modified concurrently and should
+;               be treated as read-only value within this function.
+;               The CGA drivers shake by one CRTC character cell size
+;               and wait for three timer ticks between steps, whereas
+;               the MCGA driver provides an empty dummy function.
 ;-----------------------------------------------------------------------
-hw_scroll_dummy:
+shake_screen:
         ; this dummy implementation returns right away
         ret
 

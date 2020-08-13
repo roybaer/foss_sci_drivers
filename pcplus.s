@@ -44,6 +44,7 @@ call_tab        dw      get_color_depth         ; bp = 0
                 dw      move_cursor             ; bp = 12
                 dw      load_cursor             ; bp = 14
                 dw      shake_screen            ; bp = 16
+                dw      scroll_rect             ; bp = 18
 
 ;-------------- cursor_struct ------------------------------------------
 ; Structure that stores the current mouse cursor.
@@ -482,6 +483,28 @@ load_cursor:
 shake_screen:
         ; this dummy implementation returns right away
         ret
+
+;-------------- scroll_rect --------------------------------------------
+; Scroll out the content of the specified rectangle while filling it
+; with the new content.
+;
+; Parameters:   ax      Y-coordinate of the top-left corner
+;               bx      X-coordinate of the top-left corner
+;               cx      Y-coordinate of the bottom-right corner
+;               dx      X-coordinate of the bottom-right corner
+;               di      frame buffer segment (offset = 0)
+;               ?       potentially further parameters for
+;                       implementations that actually scroll
+; Returns:      --
+; Notes:        Simple implementations may omit the scrolling and
+;               delegate the call to update_rect, adjusting the
+;               parameters as needed.
+;-----------------------------------------------------------------------
+scroll_rect:
+        ; update_rect expects the target frame buffer segment in si
+        mov     si,di
+        ; tail call to update_rect
+        jmp     update_rect
 
 ;***********************************************************************
 ; The helper functions below are not part of the API.

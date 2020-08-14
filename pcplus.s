@@ -722,7 +722,6 @@ restore_background:
         mov     di,[cursor_ofs]
         add     di,16384
 
-        mov     si,cursor_bg
         xor     bx,bx
         mov     bl,[cursor_hbytes]
         mov     dl,[cursor_rows]

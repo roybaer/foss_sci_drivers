@@ -27,8 +27,8 @@ It has the following features:
 - Small size
 
 Note:
-The driver has not been optimized for speed, yet.
-A speed-up of factor two or three should be possible.
+Only some parts of the driver have already been optimized for speed.
+The mouse cursor, for instance, is still implemented in a very naive way.
 
 Assembling
 ----------

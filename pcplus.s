@@ -79,6 +79,24 @@ cursor_new_y    dw      0
 
 cursor_lock     dw      0
 
+; pixel format LUT that translates IRGBIRGB to RGRGBIBI
+pix_fmt_lut     db      0,2,16,18,32,34,48,50,1,3,17,19,33,35,49,51
+                db      8,10,24,26,40,42,56,58,9,11,25,27,41,43,57,59
+                db      64,66,80,82,96,98,112,114,65,67,81,83,97,99,113,115
+                db      72,74,88,90,104,106,120,122,73,75,89,91,105,107,121,123
+                db      128,130,144,146,160,162,176,178,129,131,145,147,161,163,177,179
+                db      136,138,152,154,168,170,184,186,137,139,153,155,169,171,185,187
+                db      192,194,208,210,224,226,240,242,193,195,209,211,225,227,241,243
+                db      200,202,216,218,232,234,248,250,201,203,217,219,233,235,249,251
+                db      4,6,20,22,36,38,52,54,5,7,21,23,37,39,53,55
+                db      12,14,28,30,44,46,60,62,13,15,29,31,45,47,61,63
+                db      68,70,84,86,100,102,116,118,69,71,85,87,101,103,117,119
+                db      76,78,92,94,108,110,124,126,77,79,93,95,109,111,125,127
+                db      132,134,148,150,164,166,180,182,133,135,149,151,165,167,181,183
+                db      140,142,156,158,172,174,188,190,141,143,157,159,173,175,189,191
+                db      196,198,212,214,228,230,244,246,197,199,213,215,229,231,245,247
+                db      204,206,220,222,236,238,252,254,205,207,221,223,237,239,253,255
+
 ;-------------- dispatch -----------------------------------------------
 ; This is the dispatch routine that delegates the incoming far-call to
 ; to the requested function via call.
@@ -266,6 +284,9 @@ update_rect:
         add     di,ax
         add     di,bx
 
+        mov     bx,pix_fmt_lut
+        mov     dh,dl
+        mov     dl,4
         mov     bp,dx
         mov     dx,cx
 .y_loop:
@@ -276,52 +297,18 @@ update_rect:
         ; load a word from the engine's frame buffer
         lodsw
         ; rearrange the IRGBIRGBIRGBIRGB word to RGRGRGRG and BIBIBIBI bytes
+        cs      xlatb
         xchg    al,ah
-        mov     bx,ax
-        and     bx,7777h
-        and     ax,8888h
-        shl     bx,1
-        shr     ax,1
-        shr     ax,1
-        shr     ax,1
-        or      ax,bx
-        shl     ax,1
-        rcl     bl,1
-        shl     ax,1
-        rcl     bl,1
-        shl     ax,1
-        rcl     bh,1
-        shl     ax,1
-        rcl     bh,1
-        shl     ax,1
-        rcl     bl,1
-        shl     ax,1
-        rcl     bl,1
-        shl     ax,1
-        rcl     bh,1
-        shl     ax,1
-        rcl     bh,1
-        shl     ax,1
-        rcl     bl,1
-        shl     ax,1
-        rcl     bl,1
-        shl     ax,1
-        rcl     bh,1
-        shl     ax,1
-        rcl     bh,1
-        shl     ax,1
-        rcl     bl,1
-        shl     ax,1
-        rcl     bl,1
-        shl     ax,1
-        rcl     bh,1
-        shl     ax,1
-        rcl     bh,1
+        cs      xlatb
+        ror     al,cl
+        rol     ax,cl
+        ror     al,cl
+
         ; write to the screen's red/green and blue/intensity page
-        mov     [es:di],bl
-        mov     [es:di+16384],bh
-        inc     di
-        loop    .x_loop
+        mov     [es:di+16384],ah
+        stosb
+        dec     ch
+        jnz    .x_loop
 
         pop     di
         pop     si

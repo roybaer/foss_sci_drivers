@@ -35,7 +35,7 @@ Assembling
 
 The source code can be assembled with `yasm` or `nasm`, e.g. via:
 
-    yasm -o PCPLUS.DRV pcplus.s
+    yasm -o drv/PCPLUS.DRV src/pcplus.s
 
 See Also
 --------

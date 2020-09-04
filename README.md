@@ -27,8 +27,8 @@ It has the following features:
 - Small size
 
 Note:
-Only some parts of the driver have already been optimized for speed.
-The mouse cursor, for instance, is still implemented in a very naive way.
+The level of optimization is a compromise between size and speed.
+Faster or smaller implementations are possible.
 
 Assembling
 ----------

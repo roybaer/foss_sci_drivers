@@ -46,24 +46,10 @@ call_tab        dw      get_color_depth         ; bp = 0
                 dw      shake_screen            ; bp = 16
                 dw      scroll_rect             ; bp = 18
 
-;-------------- cursor_struct ------------------------------------------
-; Structure that stores the current mouse cursor.
-; Cursor format expected by load_cursor:
-;
-; Two unused words followed by
-; sixteen 16-bit little-endian words AND-matrix followed by
-; sixteen 16-bit little-endian words OR-matrix.
-; The most significant bit is the left-most pixel.
-; Everything else is not part of the API and for internal use, only.
-;-----------------------------------------------------------------------
-cursor_struct:
-; reserved fields not used by the driver
-cursor_dnu1     dw      0
-cursor_dnu2     dw      0
-; and-mask
-cursor_and      times   16 dw 0
-; or-mask
-cursor_or       times   16 dw 0
+; active mouse cursor in the internal pixel format
+; five bytes per line (four bytes mask data + one padding byte)
+cursor_and      times   80 db 0                 ; inverted and-mask
+cursor_or       times   80 db 0                 ; or-mask
 
 ; saved background pixels overwritten by the cursor
 cursor_bg       times   160 db 0
@@ -428,17 +414,77 @@ move_cursor:
 ; Parameters:   ax      segment of the new cursor
 ;               bx      offset of the new cursor
 ; Returns:      ax      the current cursor visibility
+; Notes:        Source cursor format expected by load_cursor:
+;               Two unused words followed by an AND- and an OR-matrix,
+;               each conststing of sixteen 16-bit little-endian words.
+;               The most significant bit is the left-most pixel.
 ;-----------------------------------------------------------------------
 load_cursor:
         ; copy the new cursor to the internal cursor data structure
         push    ds
         mov     ds,ax
-        mov     si,bx
-        mov     di,cursor_struct
+        lea     si,[bx+4]
+        mov     di,cursor_and
         mov     ax,cs
         mov     es,ax
-        mov     cx,34
-        rep     movsw
+
+        mov     dx,16
+.loop_y_and:
+        lodsw
+        xchg    al,ah
+        not     ax
+        mov     cx,8
+.shift_loop_1_and:
+        shr     ax,1
+        rcr     bx,1
+        sar     bx,1
+        loop    .shift_loop_1_and
+        xchg    bl,bh
+        mov     [es:di],bx
+        inc     di
+        inc     di
+        mov     cx,8
+.shift_loop_2_and:
+        shr     ax,1
+        rcr     bx,1
+        sar     bx,1
+        loop    .shift_loop_2_and
+        mov     ax,bx
+        xchg    al,ah
+        stosw
+        xor     ax,ax
+        stosb
+        dec     dx
+        jnz    .loop_y_and
+
+        mov     dx,16
+.loop_y_or:
+        lodsw
+        xchg    al,ah
+        mov     cx,8
+.shift_loop_1_or:
+        shr     ax,1
+        rcr     bx,1
+        sar     bx,1
+        loop    .shift_loop_1_or
+        xchg    bl,bh
+        mov     [es:di],bx
+        inc     di
+        inc     di
+        mov     cx,8
+.shift_loop_2_or:
+        shr     ax,1
+        rcr     bx,1
+        sar     bx,1
+        loop    .shift_loop_2_or
+        mov     ax,bx
+        xchg    al,ah
+        stosw
+        xor     ax,ax
+        stosb
+        dec     dx
+        jnz    .loop_y_or
+
         pop     ds
 
         ; make sure that the on-screen cursor changes, as well
@@ -592,75 +638,65 @@ draw_cursor:
         mov     es,ax
         mov     di,[cursor_ofs]
         mov     si,cursor_and
-        mov     dh,[cursor_rows]
-
-.draw_y_loop:
-        ; load AND-mask for this line
-        lodsw
-        ; make it easier to handle by inverting it
-        not     ax
-        ; calculate X-offset and mask
+        ; calculate X-offset, load row count
         mov     cx,[cursor_x]
         and     cx,3
-        ; use ch to mask-in/out individual pixels from left to right
-        mov     ch,0c0h
         shl     cl,1
-        shr     ch,cl
+        mov     ch,[cursor_rows]
+
+.draw_y_loop:
         ; count horizontal bytes in bl
         xor     bx,bx
-        ; save X-offset and mask for later
-        push    cx
 
-        ; apply the AND-mask to the current line
-.draw_x_loop_and:
-        shl     ax,1
-        jnc     .skip_and
-        not     ch
-        ; red/green page
-        mov     dl,[es:di+bx]
-        and     dl,ch
-        mov     [es:di+bx],dl
-        ; blue/intensity page
-        mov     dl,[es:di+bx+16384]
-        and     dl,ch
-        mov     [es:di+bx+16384],dl
-        not     ch
-.skip_and:
-        shr     ch,1
-        shr     ch,1
-        jnc     .skip_reset_mask_and
-        mov     ch,0c0h
-        inc     bx
-.skip_reset_mask_and:
+        ; handle first byte in line
+        ; load one word of the inverted AND-mask for this line
+        mov     ax,[si]
+        xchg    al,ah
+        shr     ax,cl
+        ; restore non-inverted
+        not     ax
+        mov     al,ah
+        ; apply the AND-mask
+        and     al,[es:di]
+        and     ah,[es:di+16384]
+        mov     bp,ax
+        mov     ax,[si+80]
+        xchg    al,ah
+        shr     ax,cl
+        mov     al,ah
+        ; apply the OR-mask
+        or      ax,bp
+        mov     [es:di+bx],al
+        mov     [es:di+bx+16384],ah
+        inc     bl
+
+        ; handle rest of line
+.draw_x_loop:
         cmp     bl,[cursor_hbytes]
-        jne     .draw_x_loop_and
-
-        ; load OR-mask for this line; restore X-offset/mask in cx
-        mov     ax,[si+30]
-        xor     bx,bx
-        pop     cx
-
-        ; apply the OR-mask to the current line
-.draw_x_loop_or:
-        shl     ax,1
-        jnc     .skip_or
-        ; red/green page
-        mov     dl,[es:di+bx]
-        or      dl,ch
-        mov     [es:di+bx],dl
-        ; blue/intensity page
-        mov     dl,[es:di+bx+16384]
-        or      dl,ch
-        mov     [es:di+bx+16384],dl
-.skip_or:
-        shr     ch,1
-        shr     ch,1
-        jnc     .skip_reset_mask_or
-        mov     ch,0c0h
-        inc     bx
-.skip_reset_mask_or:
-        cmp     bl,[cursor_hbytes]
-        jne     .draw_x_loop_or
+        je      .draw_x_loop_end
+        ; load one word of the inverted AND-mask for this line
+        mov     ax,[si+bx-1]
+        xchg    al,ah
+        shr     ax,cl
+        ; restore non-inverted
+        not     ax
+        mov     ah,al
+        ; apply the AND-mask
+        and     al,[es:di+bx]
+        and     ah,[es:di+bx+16384]
+        mov     bp,ax
+        mov     ax,[si+bx+80-1]
+        xchg    al,ah
+        shr     ax,cl
+        mov     ah,al
+        ; apply the OR-mask
+        or      ax,bp
+        mov     [es:di+bx],al
+        mov     [es:di+bx+16384],ah
+        inc     bl
+        jmp     .draw_x_loop
+.draw_x_loop_end:
+        add     si,5
 
         ; handle scanline interleaving
         add     di,8192
@@ -668,7 +704,7 @@ draw_cursor:
         jb      .draw_odd
         sub     di,16304
 .draw_odd:
-        dec     dh
+        dec     ch
         jnz     .draw_y_loop
 
         ret

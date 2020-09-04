@@ -24,11 +24,24 @@ It has the following features:
 - Native 320x200 pixel 16-color mode
 - Full mouse cursor support
 - 8088 compatibility
-- Small size
 
 Note:
 The level of optimization is a compromise between size and speed.
 Faster or smaller implementations are possible.
+
+### Sigma Designs Color 400 ###
+
+The SCI0 driver COL400.DRV provides a 16-color mode with 320x200 pixels on
+machines with a Color 400 graphics card by Sigma Designs.
+
+It has the following features:
+
+- Native 320x200 pixel 16-color mode
+- Full mouse cursor support
+- 8088 compatibility
+
+Note:
+This driver is derived from PCPLUS.DRV.
 
 Assembling
 ----------

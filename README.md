@@ -50,6 +50,15 @@ The source code can be assembled with `yasm` or `nasm`, e.g. via:
 
     yasm -o drv/PCPLUS.DRV src/pcplus.s
 
+Installation
+------------
+
+To install a driver, copy it to the game's directory and run INSTALL.EXE.
+The installer should auto-detect and list all the available drivers.
+
+Alternatively, use a text editor of your choice to modify the relevant
+entry in RESOURCE.CFG, manually.
+
 See Also
 --------
 

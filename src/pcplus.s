@@ -133,6 +133,11 @@ init_video_mode:
         ; save mode number
         push    ax
 
+        ; NOTE: Mode 5 disables the composite color signal.
+        ;       This avoids artifacts on non-NTSC composite screens
+        ;       and keeps the text readable on NTSC screens.
+        ;       If you want NTSC color, use mode 4, instead.
+
         ; set video mode 5 (320x200 - 4 colors)
         mov     ax,5
         int     10h
